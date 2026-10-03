@@ -1,5 +1,8 @@
-# Foundry — COCKPIT
+# Foundry: COCKPIT
 
-A Palantir Foundry/AIP-class **decision cockpit for founders and MDs**: a world event happens, and within 60 seconds the leader sees what it means for their P&L, the options, their cost and confidence, and can approve one.
+A Palantir Foundry/AIP-class **Decision OS** for founders and MDs. Any event in the world or inside the company is sensed, resolved, traced through a dependency graph to P&L and departments, and turned into a verified Decision Brief within about a minute. A permission-true second brain covers every department.
 
-- Full architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- Interactive atlas (open in a browser): [docs/atlas/index.html](docs/atlas/index.html)
+- Block catalog: [docs/BLOCKS.md](docs/BLOCKS.md)
+- Rebuild atlas and catalog after editing `docs/atlas/blocks.json`: `node scripts/build-atlas.mjs`

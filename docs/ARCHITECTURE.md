@@ -1,27 +1,33 @@
-# COCKPIT — a Decision OS for the people who run billion-dollar companies
+# COCKPIT: a Decision OS for people who run large companies
 
-> A Foundry/AIP-class platform rebuilt around one promise: **an event happens anywhere in the world, and within 60 seconds the MD sees what it means for *their* P&L, what the options are, what each costs, and can approve one with a tap.**
+> Something happens anywhere in the world, or anywhere inside the company. Within about a minute, the right leader sees what it means for *their* P&L and *their* departments, the options, what each costs, how sure we are, and the strongest argument against the recommendation. They can approve an action with one tap.
 
-This document is the target architecture. It borrows the two best-proven ideas available today:
+COCKPIT is domain-agnostic. A war, a central-bank surprise, a new regulation, a competitor's price cut, a heatwave, a ransomware attack on a supplier, or a scrap spike on one assembly line all travel the **same path** through the same blocks. Only the event type, the edges traversed and the playbook change.
 
-1. **Palantir's Ontology** — model the business (and the world it depends on) as typed *objects*, *links* and *actions*, so data, logic and decisions share one vocabulary.
-2. **The Claude Code agent harness** — a tool-calling agent loop with subagents, skills, hooks, permission modes and context management, so LLM reasoning is *bounded, auditable and composable* instead of a chatbot guessing.
+- **Interactive atlas** (every block, clickable, with how it works): [`docs/atlas/index.html`](atlas/index.html)
+- **Full block catalog** (generated from the same data): [`docs/BLOCKS.md`](BLOCKS.md)
+- **Source of truth:** [`docs/atlas/blocks.json`](atlas/blocks.json). Rebuild with `node scripts/build-atlas.mjs`.
 
-The combination is the point: the Ontology gives agents something true to reason over; the harness gives the Ontology a mind that can work through a novel situation step by step.
+It combines two proven ideas:
+
+1. **Palantir's Ontology**: model the business and the world it depends on as typed objects, links and governed actions, so data, logic and decisions share one vocabulary.
+2. **The Claude Code agent harness**: a tool-calling loop with subagents, skills, hooks, permission modes and context management. This keeps LLM reasoning bounded, auditable and composable.
 
 ---
 
-## 1. Design principles
+## 1. Principles
 
-| # | Principle | Consequence |
-|---|-----------|-------------|
-| 1 | **The model never invents numbers.** | Every quantity in a brief comes from a reasoning engine (L3) or the ontology (L2), with a provenance link. The LLM plans, routes, explains — it does not compute exposure. |
-| 2 | **Outside-in AND inside-out.** | The twin covers the enterprise (BOM, plants, contracts) *and* the external world it depends on (fabs, ports, countries, commodities). Without the external half you can't see Taiwan → MCU → Nexon. |
-| 3 | **N-tier, not Tier-1.** | Most shocks hit Tier-2..N. The graph must resolve down to fab/wafer level, or the system is blind exactly where it matters. |
-| 4 | **Decisions, not dashboards.** | The output unit is a *Decision Brief*: options, cost, time-to-impact, confidence, dissent, and a one-tap action. Charts are evidence, not the product. |
-| 5 | **Adversarial by default.** | A Red Team subagent attacks every recommendation before the MD sees it. Its dissent is shown, not hidden. |
-| 6 | **Act through governed verbs only.** | Agents can only change the world via typed Action Types with permissions, approval gates and audit — never raw writes. |
-| 7 | **Every decision is a training example.** | Outcomes are logged against predictions; the system calibrates itself over time. |
+| # | Principle | What it forces in the design |
+|---|-----------|------------------------------|
+| 1 | **Models never invent numbers** | Every figure comes from a deterministic engine or a governed metric, with a run ID or citation. Agents plan, route and explain. |
+| 2 | **General by construction** | Generality comes from an event-type taxonomy (about 300 types in 15 families) and a typed dependency graph, not from per-domain code. |
+| 3 | **Outside-in and inside-out** | The twin covers the world (countries, regulators, markets, infrastructure, competitors) *and* the enterprise (every department, process, document, KPI). |
+| 4 | **The whole company is the knowledge base** | Thousands of departments are generated from HR, directory and system data, not drawn by hand. Each gets a Department Twin and an on-demand liaison agent. |
+| 5 | **Permission-true** | The AI never shows anyone something they could not open in the source system. ACLs are mirrored and enforced before retrieval. |
+| 6 | **Decisions, not dashboards** | The unit of output is a Decision Brief with options, ranges, confidence, dissent and an action button. |
+| 7 | **Adversarial and verified** | A Red Team attacks every escalated recommendation. A Verifier checks every number and claim against provenance. |
+| 8 | **Act only through governed verbs** | Real-world changes happen only through typed Action Types, behind policy hooks, autonomy levels and human approval. |
+| 9 | **Learns from outcomes** | Every prediction is scored against what happened, and sources, transfer functions, thresholds and playbooks recalibrate. |
 
 ---
 
@@ -29,235 +35,135 @@ The combination is the point: the Ontology gives agents something true to reason
 
 ```mermaid
 flowchart TB
-  subgraph L0[L0 Signal Mesh]
-    GEO[Geo / conflict<br/>GDELT, ACLED, wires]
-    MKT[Markets<br/>DRAM spot, FX, LME, freight]
-    TRD[Trade + logistics<br/>AIS, customs, bills of lading]
-    OSI[OSINT / satellite<br/>ports, fabs, grids, weather]
-    SUP[Supplier signals<br/>portals, filings, news]
-    ENT[Enterprise core<br/>SAP, PLM BOM, MES, CRM, DMS]
-  end
-  subgraph L1[L1 Event Fabric]
-    BUS[Kafka + Flink streams · CDC · entity resolution · translation · dedupe · lineage]
-  end
-  subgraph L2[L2 Ontology / Digital Twin]
-    OBJ[Objects + links<br/>Country→Fab→Chip→Part→Tier1→Plant→Program→P&L]
-    KIN[Action types + functions]
-    TS[Time-series + vector store]
-    PRE[Precedent library]
-  end
-  subgraph L3[L3 Reasoning Engines]
-    IMP[Impact propagation]
-    SIM[Scenario simulation]
-    FC[Forecasters]
-    OPT[Optimizer]
-    CAU[Causal engine]
-  end
-  subgraph L4[L4 Agent Harness]
-    ORC[Orchestrator loop]
-    SUB[Subagents]
-    SK[Skills / playbooks]
-    HK[Hooks + permission modes]
-    CTX[Context engine + memory]
-  end
-  subgraph L6[L6 Cockpit]
-    SR[Situation room]
-    CV[Cascade view]
-    LAB[Scenario lab]
-    DB[Decision brief]
-    AC[Action console]
-  end
-  L5[[L5 Trust plane: RBAC · markings · provenance · audit · evals · approvals · kill switch]]
-
-  L0 --> L1 --> L2 --> L3 <--> L4 --> L6
-  L6 -- approved actions --> KIN
-  KIN -- write-back --> ENT
-  L6 -. outcomes .-> PRE
-  L5 --- L2 & L3 & L4 & L6
+  L0["L0 World Sensing<br/>registry · discovery agent · adaptive scheduler · fetchers · licensed feeds · streams · parse · change detection"]
+  L1["L1 Enterprise Intake (second brain)<br/>200+ connectors · permission mirror · document intelligence · org & expertise graph · process mining · KPI tree · tacit knowledge · department twins"]
+  L2["L2 Fusion Fabric<br/>event bus · stream processor · entity resolution · storylines · credibility · provenance"]
+  L3["L3 Knowledge Core<br/>world ontology · enterprise ontology · dependency bridge graph · knowledge store · temporal store · actions · precedents · transfer functions"]
+  L4["L4 Reasoning Engines<br/>relevance router · event taxonomy · impact propagation · simulator · forecasters · optimizer · financial translator · weak signals · backtester"]
+  L5["L5 Agent Harness<br/>orchestrator · specialist + department liaison subagents · red team · verifier · brief writer · second-brain Q&A · tools/MCP · playbooks · hooks · autonomy levels"]
+  L7["L7 Cockpit<br/>situation room · impact feed · cascade · scenario lab · decision brief · action console · ask the company · department pulse · digests"]
+  L8["L8 Learning Loop<br/>outcomes · calibration · playbook miner · stewardship"]
+  L6[["L6 Trust Plane: identity · model gateway · injection shield · audit · evals · approvals"]]
+  L0 --> L2
+  L1 --> L2
+  L2 --> L3 --> L4 <--> L5 --> L7
+  L7 -- approved actions --> L3
+  L7 -.-> L8 -.-> L4
+  L6 --- L3 & L4 & L5 & L7
 ```
 
 ---
 
-## 3. Layer by layer
+## 3. How world sensing runs on its own (L0)
 
-### L0 — Signal Mesh
+There are no manual searches. The loop runs continuously:
 
-Two halves, both mandatory.
+1. **Source Registry**: 40k–80k sources, each with access method, coverage (which ontology objects it reports on), reliability prior, typical lead time, cost and legal basis.
+2. **Source Discovery Agent**: finds coverage gaps (for example, a key supplier covered by only one source), hunts for primary and local-language sources, and **backtests** each candidate against past events before proposing it. Humans approve paid sources.
+3. **Adaptive Crawl Scheduler**:
+   - Learns each source's change rate and sets priority as change rate × importance × exposure.
+   - Respects robots.txt and rate limits, and uses conditional GETs.
+   - **Surge mode**: when a storyline forms, every related source is polled far more often for a set window.
+4. **Fetcher Fleet**: plain HTTP for most pages, headless Chromium for JS-heavy sites, plus document, audio and video fetchers. Every raw response is archived (WARC + hash), so any fact traces to the exact bytes. No CAPTCHA solving and no login bypass.
+5. **Licensed feeds and streams** are used first wherever they exist: wires, market data, AIS/ADS-B, satellite, weather, regulators, sanctions lists, filings, threat intel. They arrive over push connections in under a second.
+6. **Parse & Extract**: boilerplate removal, layout-aware PDF and OCR, speech-to-text with speakers, translation that keeps the original.
+7. **Change Detector**: diffs living documents (laws, tariffs, competitor price pages, supplier terms) and labels which changes actually matter.
 
-**Outside-in (the world):**
+About 1M documents a day collapse into roughly 20k storylines a day (L2). Of those, around 50 reach the CXO and a few hundred reach department owners (L4 Relevance Router).
 
-| Feed class | Examples | Why |
-|---|---|---|
-| Geopolitics / conflict | GDELT, ACLED, Reuters/AP/Bloomberg wires, government gazettes, sanctions lists (OFAC, EU, MEA) | First trigger signal |
-| Markets | DRAM/NAND spot (TrendForce/DRAMeXchange), LME metals, FX, Brent, container + air freight indices, war-risk premiums | Price shock + early warning (markets move before news) |
-| Trade + logistics | AIS vessel positions, port congestion, customs/bill-of-lading data (Panjiva/ImportGenius-class), flight cargo | Confirms physical disruption; maps hidden supplier links |
-| OSINT / earth observation | Satellite imagery (Planet/Maxar-class), night lights, grid outages, weather/quakes (USGS) | Fab/port status when official info lags |
-| Supplier intelligence | Supplier portals, filings, earnings calls, credit risk, N-tier mapping vendors | Fills Tier-2..N gaps |
+---
 
-**Inside-out (the company):** ERP (SAP S/4: POs, inventory, contracts), PLM (full BOM with part→manufacturer→fab where known), MES (line rates), CRM/dealer DMS (order book by trim), treasury (hedges), program management (SDV milestones).
+## 4. The second brain (L1 + L3)
 
-### L1 — Event Fabric
+- **Connector Mesh** covers ERP, CRM, HR, procurement, treasury, contracts, PLM, MES/SCADA, quality, maintenance, SharePoint/Drive/Confluence/Jira, Teams/Slack, opt-in email, meeting transcripts, warehouses and BI. It runs inside the company perimeter.
+- **Permission Mirror** copies every source system's ACLs onto every chunk and object. It fails closed, and compartments (M&A, legal privilege, HR, board) need explicit grants.
+- **Document Intelligence**:
+  - Chunks along each document's structure and links entities to the ontology.
+  - Classifies department, sub-department, document type, process and sensitivity.
+  - Judges whether a document is current or superseded.
+  - Writes 3-level summaries and embeddings.
+- **Org & Expertise Graph**: company → BU → department → sub-department → team → role → person, built from data, plus who actually knows what. Every ontology object gets an owner, so alerts route to people.
+- **Process Mining** shows how work really flows, so impacts can propagate through processes.
+- **KPI Tree** keeps one definition per metric, from EBITDA down to a single machine. It turns any operational change into money and an accountable owner.
+- **Tacit Knowledge Capture** extracts decisions and rationale from meetings and interviews experts before knowledge leaves. Nothing is published without the expert's approval.
+- **Department Twins** are auto-maintained profiles of every department. Each grounds a **Department Liaison agent** that speaks for that department when an event touches it.
+- **Second Brain Q&A** lets any employee ask anything and get a cited, permission-scoped answer, plus the name of the expert to ask when the documents run out.
 
-- **Streaming backbone:** Kafka topics per feed; Flink jobs for normalisation, windowing, anomaly scoring.
-- **CDC** from ERP/PLM so the twin is minutes-fresh, not nightly.
-- **Entity resolution** is the hardest, most valuable part: "TSMC", "台積電", "Taiwan Semiconductor Mfg Co Ltd", and a customs consignee code must collapse to one `Fab` object. Use deterministic keys (LEI, DUNS, GLN) + learned matchers + human review queue.
-- **Event objects:** every signal becomes a typed `Event {type, geo, actors, confidence, sources[]}` with lineage back to raw docs.
+---
 
-### L2 — Ontology (the digital twin)
+## 5. What makes it general (L3 + L4)
 
-Semantic layer (nouns):
+- **Dependency Bridge Graph**: typed, weighted edges between the enterprise and the world. Edge types: `supplies`, `sells_in`, `regulated_by`, `priced_in`, `financed_by`, `competes_with`, `depends_on_infra`, `employs_in`, `reputational_exposure`. A coverage score per BU shows the blind spots.
+- **Event-Type Taxonomy**: each of about 300 types names its propagation channels, transfer functions, specialist agents, departments and playbook.
+- **Transfer Function Library**: quantified, lagged, uncertain responses per edge × event type, estimated from history and backtested.
+- **Impact Propagation Engine**: Monte Carlo traversal along the prescribed channels, net of buffers, returning ranked, explained paths. Paths for the top 200 standing scenarios are kept precomputed.
+- **Simulator, Forecasters, Optimizer, Financial Translator**: turn paths into scenarios, then into options, then into P&L, cash and covenants by BU and quarter.
 
-```
-Country ─hosts→ Fab ─produces→ ChipSKU ─used_in→ Module/Part ─supplied_by→ Tier1Supplier
-Tier1Supplier ─ships_to→ Plant ─builds→ VehicleProgram ─sells_as→ Trim ─generates→ Revenue
-Port/Lane ─carries→ Shipment ─contains→ Part
-Contract ─binds→ (Supplier, Part, volume, price, force-majeure terms)
-Commodity ─input_to→ ChipSKU / Part
-Event ─affects→ any of the above (with probability + severity)
-```
+---
 
-Kinetic layer (verbs), each a governed **Action Type** with parameters, validations, approval policy and write-back connector:
+## 6. Agent harness (L5): the Claude Code pattern
 
-`raise_buffer_po`, `request_allocation`, `qualify_alternate_source`, `reallocate_supply`, `adjust_build_plan`, `place_fx_or_commodity_hedge`, `change_trim_content`, `open_war_room`, `notify_supplier`.
-
-**Functions** (versioned, tested code) compute derived properties: `exposure(event, program)`, `days_of_cover(part)`, `margin_at_risk(program, horizon)`, `substitutability(part)`.
-
-**Precedent library:** curated past shocks (2011 Tohoku/Renesas fire, 2021 chip crisis, 2021 Suez blockage, 2022 Shanghai lockdown, 2024 Red Sea) with measured lead-time and price curves — used to calibrate simulations and give the MD analogies ("this looks like Renesas 2021 × 5").
-
-### L3 — Reasoning Engines
-
-These are deterministic or statistical services exposed as tools. Agents call them; they do not replace them.
-
-| Engine | Method | Output |
-|---|---|---|
-| **Impact propagation** | Probabilistic graph traversal over the ontology; edge weights = share of supply, substitutability, inventory buffer, lead time | Exposure score per node, with the path that explains it |
-| **Scenario simulation** | Monte Carlo + system dynamics (inventory, lead-time, price elasticity); scenarios parameterised (blockade 2 wk / 3 mo / 12 mo) | Fan charts of units lost, revenue, margin over time |
-| **Forecasters** | Gradient-boosted + time-series foundation models for spot price, lead time, demand | Distributions, not point estimates |
-| **Optimizer** | MILP / CP-SAT for allocation of scarce parts across plants/programs/trims, buy-ahead sizing | Plans with shadow prices ("one more MCU is worth ₹X") |
-| **Causal engine** | Structural causal models / counterfactuals over precedents | "What if we had bought 3 months earlier?" — used for evaluation & learning |
-
-### L4 — Agent Harness (the Claude Code pattern)
-
-This is where the Claude Code architecture maps almost 1:1:
-
-| Claude Code concept | Cockpit equivalent |
+| Claude Code | COCKPIT |
 |---|---|
-| Agent loop (plan → tool → observe → repeat) | **Orchestrator** working an Event until it can produce a Decision Brief |
-| Tools (Read, Grep, Bash, Edit…) | `ontology.query`, `ontology.traverse`, `sim.run`, `forecast.get`, `optimize.solve`, `web.search`, `action.propose` |
-| MCP servers | Connectors to SAP, Bloomberg, supplier portals, email/Slack — all surfaced as namespaced tools |
-| Subagents (isolated context, scoped tools, summary return) | **Geo Analyst**, **Supply Tracer**, **CFO Modeler**, **Ops Planner**, **Red Team**, **Brief Writer** — run in parallel, each returns a compact structured report |
-| Skills (reusable instructions loaded on demand) | **Playbooks**: `chip-shock`, `fx-shock`, `sanctions`, `port-closure`, `key-supplier-insolvency` — encode the firm's own crisis doctrine |
-| CLAUDE.md / memory | **Company memory**: strategy, risk appetite, red lines ("never single-source safety ECUs"), MD's preferences, past decisions |
-| Context compaction | Long-running war rooms summarise older turns while keeping the ontology state as ground truth |
-| Hooks (PreToolUse / PostToolUse) | **Policy hooks**: block an action that breaches a covenant, require CFO co-sign above ₹X Cr, auto-attach provenance, log everything |
-| Permission modes (plan / default / auto) | **Observe** (read only) → **Recommend** (draft actions) → **Act-with-approval** (one-tap) → **Autonomous within limits** (e.g. auto-reorder under ₹5 Cr) |
-| Plan mode | **Scenario sandbox**: agents explore on a branched copy of the twin; nothing touches production until approved |
-| Auto-mode safety classifier | A separate model screens each proposed action for scope creep, prompt injection from external feeds, and policy breach |
+| Agent loop | **Orchestrator** owns a situation from escalation to brief, as a durable workflow |
+| Subagents with isolated context and scoped tools | Geopolitics, Markets, Ops, Finance, Customer, Legal analysts, plus **Department Liaisons** (one per affected department) |
+| Tools + MCP | `ontology.*`, `knowledge.search`, `metrics.query`, `sim.run`, `forecast.get`, `optimize.solve`, `fin.translate`, `action.propose`, and MCP servers for every external system |
+| Skills | **Playbooks** per event family and company doctrine, loaded on demand |
+| CLAUDE.md / memory | **Company memory**: strategy, risk appetite, red lines, the MD's preferences |
+| Context compaction | Long war rooms are compacted, with the ontology as ground truth |
+| Hooks | **Policy engine** on every tool call and action: delegation of authority, spend limits, covenants, sanctions screening, residency |
+| Permission modes | **Autonomy levels**: Observe → Recommend → Act-with-approval → Bounded autonomy, earned by track record |
+| Auto-mode safety classifier | **Injection shield** + action safety model |
 
-**Why subagents matter here:** a geopolitical event produces megabytes of noisy signal. Putting it all in one context window degrades reasoning. Each subagent burns its own context on its slice and hands back ~1 page; the orchestrator reasons over six clean pages.
-
-**Prompt-injection stance:** every external feed is *data, never instructions*. Signals enter agent context only via typed Event objects and quoted excerpts, never raw HTML.
-
-### L5 — Trust Plane (cross-cutting)
-
-- **RBAC + markings + purpose-based access:** the plant manager sees their plant; the MD sees everything; JV partner data is marked and compartmentalised.
-- **Provenance per claim:** every sentence in a brief links to the objects, engine runs and sources behind it. Click "₹2,400 Cr at risk" → see the traversal path and simulation run ID.
-- **Immutable audit log** of every agent step, tool call, human approval and override.
-- **Evals + calibration:** replay historical shocks (2021 chip crisis) as tests; track Brier scores of probability claims; regression-test agent behaviour on every model or prompt change.
-- **Global branching:** scenarios run on branches of the ontology (like git for the twin).
-- **Kill switch:** one control drops all agents to Observe.
-
-### L6 — The Cockpit (UX)
-
-One screen, five panes, dark "ops room" aesthetic:
-
-1. **Situation Room** — world map; live events pulsing; company exposure overlaid as heat (fabs, ports, plants, suppliers).
-2. **Cascade View** — the graph from event to P&L, edges weighted by exposure; click any node to drill down.
-3. **Scenario Lab** — sliders (blockade length, buffer size, spot price) → fan charts update in seconds.
-4. **Decision Brief** — the hero pane: headline, 3–4 options with cost / time-to-impact / confidence / reversibility, the Red Team's dissent, recommended choice.
-5. **Action Console** — approve → typed actions fire into SAP / supplier email / treasury, with approval chain and audit.
-
-Plus: natural-language bar ("what if it lasts 6 months?"), war-room mode (shared live session for CXOs), mobile brief push for the MD.
+There are also three checking agents. The **Red Team** argues against the recommendation, and its dissent is shown in full. The **Verifier** checks every number and claim against provenance and the reader's permissions. The **Brief Writer** cannot introduce numbers.
 
 ---
 
-## 4. Worked run: Taiwan Strait blockade → Tata Motors
+## 7. The 60-second budget
 
-> Exposure figures below are illustrative of the *shape* of the analysis, not real Tata Motors data.
-
-| Clock | What happens | Layer |
-|---|---|---|
-| T+0s | Wire reports + AIS shows strait traffic collapsing + war-risk premium jumps → fused into one `Event(BLOCKADE, Taiwan, conf 0.92)` | L0 → L1 |
-| T+3s | Entity resolution links event to ontology: TSMC, UMC, VIS, Nanya, ASE fabs; Kaohsiung/Keelung ports | L1 → L2 |
-| T+8s | Impact propagation walks N-tier BOM: MCUs + cockpit SoCs → infotainment/ADAS/BMS modules → Harman/Bosch/Continental/Visteon → Nexon/Punch/Harrier EV, SDV zonal compute, JLR premium trims | L3 |
-| T+8s | **Hidden link surfaced:** Tata's own Dholera fab's technology partner (PSMC) is Taiwanese → India-fab-as-hedge is itself exposed | L2/L3 |
-| T+20s | 10k Monte Carlo runs × 3 blockade durations; DRAM already tight from AI demand → second price spike; cloud/OTA cost rises | L3 |
-| T+40s | Optimizer sizes buy-ahead + reallocation; Red Team argues "buying now at panic prices locks in loss if blockade ends in 2 weeks" → quantified | L3/L4 |
-| T+60s | Brief on MD's screen | L6 |
-
-**The brief the MD reads:**
-
-- **A — Buy now (recommended):** lock 6–9 months of auto-grade MCU + DRAM before spot spikes. Cost: ₹X Cr working capital. Protects ~Y% of H2 volume. Reversible: partially (resale market).
-- **B — Dual-source:** fast-track qualification of non-Taiwan fabs (Samsung, GlobalFoundries, Infineon/NXP own fabs). 6–12 months; reduces structural exposure.
-- **C — De-content:** ship base screens now, unlock premium features via OTA once supply returns. Protects volume, hurts mix.
-- **D — Reallocate:** optimizer routes scarce chips to highest-margin programs (JLR, EV) first.
-- **Red Team dissent:** shown in full, with the probability band where A is the wrong call.
-- **Second-order flag:** SDV program timeline at risk; recommend board-level review of compute-platform sourcing.
-
----
-
-## 5. Reference tech stack
-
-| Concern | Choice (swappable) |
+| Stage | Budget |
 |---|---|
-| Streaming | Kafka (Confluent/Redpanda) + Flink |
-| Lakehouse | Iceberg on object storage; Spark / DuckDB / Polars compute |
-| Ontology store | Property graph (Neo4j / TigerGraph / Neptune) + Postgres for object metadata; OpenSearch for search; pgvector/Qdrant for embeddings |
-| Time-series | ClickHouse or TimescaleDB |
-| Engines | Python services: NetworkX/graph-tool → GPU (cuGraph) at scale; OR-Tools / Gurobi; PyMC / NumPyro; Darts / time-series FMs |
-| Agent harness | Claude Agent SDK (same loop, tools, subagents, hooks, MCP as Claude Code) on the latest Claude models; Temporal for durable long-running workflows |
-| Connectors | MCP servers per system (SAP, Bloomberg, Slack, email, supplier portals) |
-| Frontend | Next.js + deck.gl/MapLibre (map) + Sigma.js/Cytoscape (graph) + Observable Plot (fan charts); WebSocket live updates |
-| Security | OPA/Cedar for policy; Keycloak/Okta; per-tenant KMS; VPC-isolated LLM endpoints with no retention |
-| Ops | Kubernetes, ArgoCD, OpenTelemetry tracing end-to-end (signal → brief) |
-
-### Latency budget for the 60-second promise
-
-| Stage | Budget | How |
-|---|---|---|
-| Ingest + fuse | 2–5 s | Streaming, pre-subscribed feeds |
-| Resolve to ontology | 1–3 s | Pre-indexed entity graph |
-| Traverse + score | 2–5 s | Pre-computed exposure paths, incremental updates |
-| Simulate | 10–20 s | Pre-warmed models, GPU Monte Carlo, scenario templates per playbook |
-| Agents (parallel subagents) | 15–25 s | Parallel fan-out; deterministic engines do the heavy math |
-| Render brief | 1–2 s | Streamed UI |
-
-The trick is **pre-computation**: exposure paths for the top ~200 geopolitical scenarios are kept warm continuously, so a real event becomes a lookup + refinement, not a cold start.
+| Signal arrives and fuses into a storyline | 2–5 s |
+| Credibility + relevance routing | 1–2 s |
+| Impact propagation (warm paths) | 2–8 s |
+| Simulation | 5–20 s |
+| Parallel subagents + red team + verifier | 15–25 s |
+| Brief rendered | 1–2 s |
 
 ---
 
-## 6. Build roadmap
+## 8. Traced scenarios (step-by-step in the atlas)
+
+1. **Taiwan Strait blockade** (geopolitical): auto OEM MD
+2. **Surprise 50 bp rate hike** (monetary): CFO / MD
+3. **New EU carbon-border rule** (regulation): compliance / MD
+4. **Competitor price cut** (competitive): sales head / MD
+5. **Heatwave + weak monsoon** (climate): COO / MD
+6. **Ransomware at a key supplier** (cyber): CISO / COO
+7. **Scrap spike on Line 3** (internal operations): plant head
+
+---
+
+## 9. Reference stack
+
+Kafka/Redpanda + Flink · Iceberg lakehouse · Neo4j/TigerGraph-class property graph · OpenSearch/Vespa + vector index · ClickHouse · Playwright + Go/Rust fetchers on Kubernetes · Debezium/Kafka Connect/OPC-UA · dbt/MetricFlow semantic layer · cuGraph + JAX Monte Carlo · Gurobi/OR-Tools · PyMC · Claude Agent SDK on the latest Claude models · Temporal · OPA/Cedar · Okta/Entra · OpenTelemetry · Next.js + deck.gl + Sigma.js.
+
+---
+
+## 10. Roadmap
 
 | Phase | Scope | Proves |
 |---|---|---|
-| **0 — Spine (6–8 wks)** | Ontology schema; ingest BOM + suppliers + 3 external feeds; static impact propagation; CLI agent over the ontology | Can we trace an event to a program? |
-| **1 — One playbook end-to-end (8–10 wks)** | `chip-shock` playbook; simulation + optimizer; Decision Brief UI; Red Team; provenance links | 60-second brief for one scenario class |
-| **2 — Cockpit (10–12 wks)** | Situation room, cascade view, scenario lab; Observe/Recommend modes; audit + evals harness replaying 2021 crisis | MD-usable product |
-| **3 — Act (ongoing)** | Write-back Action Types to SAP/treasury, approval chains, Act-with-approval mode | Closes the loop |
-| **4 — Learn** | Outcome tracking, calibration dashboards, playbook library growth, more industries | Compounding advantage |
-
----
-
-## 7. What makes this more than a scraper with charts
-
-- **The ontology is the moat.** Feeds are commodities; a resolved N-tier graph linking a Taiwanese fab to a specific Tata trim's margin is not.
-- **Agents are bounded workers, not oracles.** They orchestrate deterministic engines, under policy hooks and permission modes, with every claim traceable.
-- **The output is a decision with a button**, adversarially tested, and every decision makes the next one better.
+| 0 Spine | Ontology schema, 5 connectors, 10 licensed feeds, bridge graph for 1 BU, propagation, CLI orchestrator | An event can be traced to money |
+| 1 Second brain | Permission mirror, document intelligence, org graph, Ask the Company | Trusted, permission-true internal knowledge |
+| 2 Cockpit | Relevance router, 3 playbook families, simulator, optimizer, financial translator, Decision Brief, red team, verifier | 60-second brief for real events |
+| 3 Scale sensing | Source registry + discovery agent, adaptive crawler, change detection, full taxonomy | Coverage across all event families |
+| 4 Act | Action types with write-back, approvals, autonomy levels | Closed loop |
+| 5 Learn | Outcome tracking, calibration, playbook miner, backtests gating releases | Gets better every month |
 
 ---
 
 ### Sources consulted
 
-- Palantir docs: [Ontology overview](https://www.palantir.com/docs/foundry/ontology/overview/), [Ontology architecture](https://www.palantir.com/docs/foundry/object-backend/overview/), [AIP architecture](https://www.palantir.com/docs/foundry/architecture-center/aip-architecture/), [Vertex scenarios](https://www.palantir.com/docs/foundry/vertex/scenarios-overview/), [Action types](https://www.palantir.com/docs/foundry/action-types/overview/)
-- Claude Code public docs and write-ups on the agent loop, tools, subagents, skills, hooks, permission modes and MCP (e.g. [How Claude Code works](https://code.claude.com/docs/en/how-claude-code-works), [Subagents](https://docs.anthropic.com/en/docs/claude-code/sub-agents), [Hooks](https://code.claude.com/docs/en/hooks))
-- 2026 semiconductor context: [GlobX — Semiconductor shortage 2026](https://globx.eu/blog/supply-chain-insight/semiconductor-shortage-2026-european-oems) (WSTS memory surge, mature-node pressure, Taiwan concentration)
+- Palantir: [Ontology overview](https://www.palantir.com/docs/foundry/ontology/overview/), [Ontology architecture](https://www.palantir.com/docs/foundry/object-backend/overview/), [AIP architecture](https://www.palantir.com/docs/foundry/architecture-center/aip-architecture/), [Vertex scenarios](https://www.palantir.com/docs/foundry/vertex/scenarios-overview/), [Action types](https://www.palantir.com/docs/foundry/action-types/overview/)
+- Claude Code public docs: [How Claude Code works](https://code.claude.com/docs/en/how-claude-code-works), [Subagents](https://docs.anthropic.com/en/docs/claude-code/sub-agents), [Hooks](https://code.claude.com/docs/en/hooks)
